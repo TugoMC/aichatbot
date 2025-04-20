@@ -1,4 +1,3 @@
-// components/navbar/
 import { Link } from "react-router-dom";
 
 export default function NavTabs({ tabs, isActive, isMobile, closeMenu }) {
@@ -11,7 +10,7 @@ export default function NavTabs({ tabs, isActive, isMobile, closeMenu }) {
                         to={tab.path}
                         onClick={closeMenu}
                         className={`px-2 py-2 transition duration-300 ${isActive(tab.path)
-                            ? "text-green-600 dark:text-green-400 border-l-4 border-green-600 dark:border-green-400 pl-3"
+                            ? "text-purple-600 dark:text-purple-400 border-l-4 border-purple-600 dark:border-purple-400 pl-3"
                             : "text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100 hover:bg-gray-50 dark:hover:bg-gray-800 rounded"
                             }`}
                     >
@@ -29,7 +28,7 @@ export default function NavTabs({ tabs, isActive, isMobile, closeMenu }) {
                     key={tab.name}
                     to={tab.path}
                     className={`px-2 py-1 transition duration-300 ${isActive(tab.path)
-                        ? "text-green-600 dark:text-green-400 border-b-2 border-green-600 dark:border-green-400"
+                        ? "text-purple-600 dark:text-purple-400 border-b-2 border-purple-600 dark:border-purple-400"
                         : "text-gray-600 dark:text-gray-300 hover:text-gray-800 dark:hover:text-gray-100"
                         }`}
                 >

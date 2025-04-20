@@ -9,7 +9,7 @@ export default function AuthSuccess() {
     useEffect(() => {
         // Vérifier l'authentification et rediriger si réussi
         checkAuth().then(() => {
-            navigate("/dashboard");
+            navigate("/");
         });
     }, [navigate, checkAuth]);
 

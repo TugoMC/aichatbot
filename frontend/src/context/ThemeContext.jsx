@@ -27,9 +27,32 @@ export const ThemeProvider = ({ children }) => {
         return 'light';
     });
 
-    // Appliquer immédiatement le thème initial
+    // Appliquer les transitions CSS au chargement
     useEffect(() => {
+        // Ajouter une feuille de style pour les transitions
+        const styleElement = document.createElement('style');
+        styleElement.innerHTML = `
+            /* Transition fluide pour tous les éléments qui changent avec le thème */
+            *, *::before, *::after {
+                transition-property: background-color, border-color, color, fill, stroke;
+                transition-duration: 300ms;
+                transition-timing-function: ease;
+            }
+            
+            /* Exclure certains éléments des transitions, si nécessaire */
+            .no-transition {
+                transition: none !important;
+            }
+        `;
+        document.head.appendChild(styleElement);
+
+        // Appliquer immédiatement le thème initial
         applyTheme(theme);
+
+        // Nettoyage lors du démontage du composant
+        return () => {
+            document.head.removeChild(styleElement);
+        };
     }, []);
 
     // Fonction pour appliquer le thème

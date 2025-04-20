@@ -84,7 +84,7 @@ export default function LanguageSelector({ currentLanguage, setCurrentLanguage, 
                             key={language.code}
                             onClick={() => changeLanguage(language.name)}
                             className={`flex items-center px-2 py-2 text-left ${currentLanguage === language.name
-                                ? "bg-gray-100 dark:bg-gray-800 text-green-600 dark:text-green-400"
+                                ? "bg-gray-100 dark:bg-gray-800 text-purple-600 dark:text-purple-400"
                                 : "text-gray-600 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-800"
                                 } rounded transition duration-300`}
                         >

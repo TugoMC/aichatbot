@@ -3,7 +3,9 @@ import { AuthProvider } from "./context/AuthContext";
 import { ThemeProvider } from "./context/ThemeContext";
 import Navbar from "./components/Navbar";
 import Home from "./pages/Home";
-import Dashboard from "./pages/Dashboard";
+import Profile from "./pages/Profile";
+import History from "./pages/History";
+import Settings from "./pages/Settings";
 import AuthSuccess from "./pages/AuthSuccess";
 
 function App() {
@@ -15,7 +17,9 @@ function App() {
             <Navbar />
             <Routes>
               <Route path="/" element={<Home />} />
-              <Route path="/dashboard" element={<Dashboard />} />
+              <Route path="/profile" element={<Profile />} />
+              <Route path="/history" element={<History />} />
+              <Route path="/settings" element={<Settings />} />
               <Route path="/auth/success" element={<AuthSuccess />} />
             </Routes>
           </div>

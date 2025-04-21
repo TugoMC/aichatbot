@@ -42,20 +42,30 @@ class _LoginScreenState extends State<LoginScreen> {
                     _isLoading = true;
                   });
 
-                  final success = await _authService.signInWithGoogle(context);
+                  try {
+                    final success =
+                        await _authService.signInWithGoogle(context);
 
-                  setState(() {
-                    _isLoading = false;
-                  });
+                    // Le dialogue de chargement est géré par AuthService
 
-                  if (success && mounted) {
-                    Navigator.of(context).pushReplacement(MaterialPageRoute(
-                      builder: (context) => const HomeScreen(),
-                    ));
-                  } else if (mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(content: Text('Échec de la connexion')),
-                    );
+                    if (success && mounted) {
+                      Navigator.of(context).pushReplacement(MaterialPageRoute(
+                        builder: (context) => const HomeScreen(),
+                      ));
+                    } else if (mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('Échec de la connexion'),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  } finally {
+                    if (mounted) {
+                      setState(() {
+                        _isLoading = false;
+                      });
+                    }
                   }
                 },
                 style: ElevatedButton.styleFrom(

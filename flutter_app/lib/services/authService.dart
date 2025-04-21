@@ -1,46 +1,120 @@
 import 'package:flutter/material.dart';
-import 'package:google_sign_in/google_sign_in.dart';
 import 'package:flutter_web_auth/flutter_web_auth.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'dart:io';
+import 'package:flutter/foundation.dart';
+import '../services/apiService.dart';
 
 class AuthService {
-  final String _backendUrl =
-      'http://10.0.2.2:5000'; // Ajustez selon votre configuration
+  final ApiService _apiService = ApiService();
+
+  // Constantes pour les schemes et URLs d'authentification
+  static const String _callbackUrlScheme = 'myapp';
 
   // Initialiser le processus d'authentification Google
+
   Future<bool> signInWithGoogle(BuildContext context) async {
     try {
-      // Méthode 1: Utiliser WebView pour l'OAuth complet
-      final result = await FlutterWebAuth.authenticate(
-        url: '$_backendUrl/api/auth/google',
-        callbackUrlScheme:
-            'myapp', // Doit correspondre à votre configuration d'URL de redirection
+      // Afficher un dialogue de chargement
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (BuildContext context) {
+          return Dialog(
+            child: Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  CircularProgressIndicator(),
+                  SizedBox(height: 16),
+                  Text('Connexion en cours...'),
+                ],
+              ),
+            ),
+          );
+        },
       );
 
-      // Vérifiez que le résultat contient une URL de succès
-      if (result.contains('success')) {
-        // Stockez l'état d'authentification
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', true);
-        return true;
+      // URL d'authentification
+      final String authUrl = _apiService.getGoogleAuthUrl();
+      debugPrint('Auth URL: $authUrl');
+
+      // Lancer l'authentification
+      final result = await FlutterWebAuth.authenticate(
+        url: authUrl,
+        callbackUrlScheme: _callbackUrlScheme,
+        preferEphemeral: true,
+      );
+
+      debugPrint('Auth Result: $result');
+
+      // Fermer le dialogue
+      if (Navigator.canPop(context)) {
+        Navigator.of(context, rootNavigator: true).pop();
       }
-      return false;
+
+      // Valider l'authentification
+      final bool success = await _apiService.validateAuthSuccess(result);
+      return success;
     } catch (e) {
-      print('Erreur d\'authentification Google: $e');
+      debugPrint('Erreur d\'authentification Google: $e');
+
+      // Fermer le dialogue en cas d'erreur
+      if (Navigator.canPop(context)) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+
+      // Montrer l'erreur
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+                'Erreur: ${e.toString().substring(0, min(e.toString().length, 100))}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+
       return false;
     }
   }
 
   // Vérifier si l'utilisateur est déjà connecté
   Future<bool> isLoggedIn() async {
+    // Vérifier d'abord avec l'API
+    final bool isAuthServer = await _apiService.isAuthenticated();
+
+    if (isAuthServer) {
+      return true;
+    }
+
+    // Si le serveur dit non, vérifier localement
     final prefs = await SharedPreferences.getInstance();
-    return prefs.getBool('isLoggedIn') ?? false;
+    final bool isAuthLocal = prefs.getBool('isLoggedIn') ?? false;
+
+    // Si contradiction, suivre le serveur
+    if (isAuthLocal && !isAuthServer) {
+      await prefs.setBool('isLoggedIn', false);
+      return false;
+    }
+
+    return isAuthLocal;
   }
 
   // Déconnexion
-  Future<void> signOut() async {
+  Future<bool> signOut() async {
+    // Essayer d'abord de se déconnecter du serveur
+    final bool success = await _apiService.logout();
+
+    // Même si la déconnexion du serveur échoue, nettoyer localement
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('isLoggedIn', false);
+
+    return success;
+  }
+
+  // Utilitaire pour limiter la longueur d'une chaîne
+  int min(int a, int b) {
+    return a < b ? a : b;
   }
 }

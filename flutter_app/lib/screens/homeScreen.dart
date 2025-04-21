@@ -73,8 +73,19 @@ class _HomeScreenState extends State<HomeScreen> {
       body: _isLoading
           ? const Center(child: CircularProgressIndicator())
           : userData == null
-              ? const Center(
-                  child: Text('Aucune donnée utilisateur disponible'))
+              ? Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Text('Aucune donnée utilisateur disponible'),
+                      const SizedBox(height: 20),
+                      ElevatedButton(
+                        onPressed: _loadUserData,
+                        child: const Text('Réessayer'),
+                      )
+                    ],
+                  ),
+                )
               : Padding(
                   padding: const EdgeInsets.all(16.0),
                   child: Column(

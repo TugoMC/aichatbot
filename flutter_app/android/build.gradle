@@ -5,9 +5,10 @@ buildscript {
         mavenCentral()
     }
     dependencies {
-        classpath 'com.android.tools.build:gradle:8.0.0'  // Ajusté pour Gradle 8.3
+        classpath 'com.android.tools.build:gradle:8.3.0'  // Ajusté pour Gradle 8.3
         classpath "org.jetbrains.kotlin:kotlin-gradle-plugin:$kotlin_version"
-        classpath 'com.google.gms:google-services:4.4.0'  // Version plus récente
+        classpath 'com.google.gms:google-services:4.4.2'  // Version plus récente
+        
     }
 }
 

@@ -7,7 +7,15 @@ import 'services/authService.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  await Firebase.initializeApp();
+  await Firebase.initializeApp(
+    options: const FirebaseOptions(
+      apiKey: "AIzaSyAGJIWcngpXVDaVMTkdzXDeVHYfcje6Q3w",
+      appId: "1:401898447850:android:32b3c57aa335ec6d0b4893",
+      messagingSenderId: "401898447850",
+      projectId: "aichatbot1-a2159",
+      storageBucket: "aichatbot1-a2159.firebasestorage.app",
+    ),
+  );
   runApp(const MyApp());
 }
 

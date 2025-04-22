@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/providers/ThemeProvider.dart';
+import 'package:flutter_app/screens/history_screen.dart';
+import 'package:flutter_app/screens/settings_screen.dart';
 
 import 'package:provider/provider.dart';
 
@@ -202,6 +204,7 @@ class _HomeScreenState extends State<HomeScreen> {
         userData: userData,
         handleLogin: _handleLogin,
         handleLogout: _handleLogout,
+        currentRoute: '/',
       ),
       body: Column(
         children: [

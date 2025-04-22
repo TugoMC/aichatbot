@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/ThemeProvider.dart';
+import '../screens/homeScreen.dart';
+import '../screens/profile_screen.dart';
+import '../screens/history_screen.dart';
+import '../screens/settings_screen.dart';
 import '../widgets/svg_icon.dart';
 
 class AppDrawer extends StatefulWidget {
@@ -14,6 +18,7 @@ class AppDrawer extends StatefulWidget {
   final Map<String, dynamic>? userData;
   final Function handleLogin;
   final Function handleLogout;
+  final String currentRoute;
 
   const AppDrawer({
     Key? key,
@@ -27,6 +32,7 @@ class AppDrawer extends StatefulWidget {
     required this.userData,
     required this.handleLogin,
     required this.handleLogout,
+    required this.currentRoute,
   }) : super(key: key);
 
   @override
@@ -46,7 +52,7 @@ class _AppDrawerState extends State<AppDrawer> {
       'name': 'English',
       'code': 'en',
       'flag':
-          'M0 0h512v512H0z;M512 0v64L322 256l190 187v69h-67L254 324 68 512H0v-68l186-187L0 74V0h62l192 188L440 0z;M184 324l11 34L42 512H0v-3l184-185zm124-12l54 8 150 147v45L308 312zM512 0L320 196l-4-44L466 0h46zM0 1l193 189-59-8L0 49V1z;M176 0v512h160V0H176zM0 176v160h512V176H0z;M0 208v96h512v-96H0zM208 0v512h96V0h-96z',
+          'M0 0h512v512H0z;M512 0v64L322 256l190 187v69h-67L254 324 68 512H0v-68l186-187L0 74V0h62l192 188L440 0z;M184 324l11 34L42 512H0v-3l184-185zm124-12l54 8 150 147v45L308 312zM512 0L320 196l-4-44L466 0h46zM0 1l193 189-59-8L0 49V1z;M176 0v512h160V0H176zM0 176v160h512V176H0zM0 208v96h512v-96H0zM208 0v512h96V0h-96z',
       'colors': ['#012169', '#FFF', '#C8102E', '#FFF', '#C8102E'],
     },
     {
@@ -111,26 +117,83 @@ class _AppDrawerState extends State<AppDrawer> {
     );
   }
 
+  // Méthode pour naviguer vers un écran
+  // Méthode pour créer une transition slide de droite à gauche
+  PageRouteBuilder _createSlideTransition(Widget screen) {
+    return PageRouteBuilder(
+      transitionDuration: const Duration(milliseconds: 300),
+      pageBuilder: (context, animation, secondaryAnimation) => screen,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        final tween = Tween<Offset>(
+          begin: const Offset(1.0, 0.0), // Commence à droite
+          end: Offset.zero, // Termine à l'écran actuel
+        );
+        final offsetAnimation = animation.drive(tween);
+
+        return SlideTransition(
+          position: offsetAnimation,
+          child: child,
+        );
+      },
+    );
+  }
+
+  void _navigateToScreen(BuildContext context, String route) {
+    Navigator.pop(context);
+
+    if (widget.currentRoute == route) {
+      return;
+    }
+
+    switch (route) {
+      case '/':
+        Navigator.pushReplacement(
+            context, _createSlideTransition(const HomeScreen()));
+        break;
+      case '/history':
+        Navigator.pushReplacement(
+            context, _createSlideTransition(const HistoryScreen()));
+        break;
+      case '/profile':
+        Navigator.pushReplacement(
+            context, _createSlideTransition(const ProfileScreen()));
+        break;
+      case '/settings':
+        Navigator.pushReplacement(
+            context, _createSlideTransition(const SettingsScreen()));
+        break;
+      default:
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
+    // Définition des onglets de navigation avec leurs routes
+    // Définition des onglets de navigation avec leurs routes
     final List<Map<String, dynamic>> tabs = [
       {
         'name': 'Chat',
         'path': '/',
         'icon': Icons.chat,
-        'isActive': true,
+        'isActive': widget.currentRoute == '/',
       },
       {
         'name': 'Historique',
         'path': '/history',
         'icon': Icons.history,
-        'isActive': false,
+        'isActive': widget.currentRoute == '/history',
+      },
+      {
+        'name': 'Profil',
+        'path': '/profile',
+        'icon': Icons.person,
+        'isActive': widget.currentRoute == '/profile',
       },
       {
         'name': 'Paramètres',
         'path': '/settings',
         'icon': Icons.settings,
-        'isActive': false,
+        'isActive': widget.currentRoute == '/settings',
       },
     ];
 
@@ -256,10 +319,7 @@ class _AppDrawerState extends State<AppDrawer> {
                                 : FontWeight.normal,
                           ),
                         ),
-                        onTap: () {
-                          Navigator.pop(context);
-                          // Navigation logic
-                        },
+                        onTap: () => _navigateToScreen(context, tab['path']),
                       ),
                     )),
 
@@ -370,24 +430,6 @@ class _AppDrawerState extends State<AppDrawer> {
                 if (widget.userData != null)
                   Column(
                     children: [
-                      // Profile link
-                      _buildMenuItemContainer(
-                        child: ListTile(
-                          leading: SvgIcon(
-                            'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-                            color: widget.textColorSecondary,
-                          ),
-                          title: Text(
-                            'Profil',
-                            style: TextStyle(color: widget.textColor),
-                          ),
-                          onTap: () {
-                            Navigator.pop(context);
-                            // Navigate to profile
-                          },
-                        ),
-                      ),
-
                       // Logout button
                       _buildMenuItemContainer(
                         child: ListTile(
@@ -445,7 +487,7 @@ class _AppDrawerState extends State<AppDrawer> {
   }
 }
 
-// Painter personnalisé pour dessiner les drapeaux
+// Painter personnalisé pour dessiner les drapeaux (inchangé)
 class FlagPainter extends CustomPainter {
   final List<String> paths;
   final List<Color> colors;

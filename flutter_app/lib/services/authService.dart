@@ -11,36 +11,29 @@ class AuthService {
 
   // Se connecter avec Google
   Future<bool> signInWithGoogle(BuildContext context) async {
-    try {
-      // Afficher un dialogue de chargement
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (BuildContext context) {
-          return Dialog(
-            child: Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: const [
-                  CircularProgressIndicator(),
-                  SizedBox(height: 16),
-                  Text('Connexion en cours...'),
-                ],
-              ),
-            ),
-          );
-        },
-      );
+    // Montrer un indicateur de chargement non-bloquant
+    final scaffold = ScaffoldMessenger.of(context);
+    scaffold.showSnackBar(
+      const SnackBar(
+        content: Row(
+          children: [
+            CircularProgressIndicator(strokeWidth: 2, color: Colors.white),
+            SizedBox(width: 16),
+            Text('Connexion en cours...'),
+          ],
+        ),
+        duration: Duration(seconds: 5),
+        backgroundColor: Color(0xFF6D28D9),
+      ),
+    );
 
+    try {
       // Démarrer le processus de connexion Google
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
       // Si l'utilisateur annule, retourner false
       if (googleUser == null) {
-        if (context.mounted && Navigator.canPop(context)) {
-          Navigator.of(context, rootNavigator: true).pop();
-        }
+        scaffold.hideCurrentSnackBar();
         return false;
       }
 
@@ -61,43 +54,32 @@ class AuthService {
       // Obtenir le token Firebase pour l'API
       final String? idToken = await userCredential.user?.getIdToken();
 
-      // Utiliser ce token pour authentifier avec notre backend
+      // Utiliser ce token pour l'API
       if (idToken != null) {
         _apiService.setAuthToken(idToken);
 
-        // Synchroniser avec le backend
-        await _apiService.syncUserWithBackend();
-      }
-
-      // Fermer le dialogue
-      if (context.mounted && Navigator.canPop(context)) {
-        Navigator.of(context, rootNavigator: true).pop();
+        // Ne pas attendre la synchronisation complète pour améliorer la vitesse perçue
+        _apiService.syncUserWithBackend().then((_) {
+          // Notification silencieuse quand la synchro est terminée
+        });
       }
 
       // Stocker l'état de connexion localement
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('isLoggedIn', true);
 
+      // Cacher le SnackBar de chargement
+      scaffold.hideCurrentSnackBar();
       return true;
     } catch (e) {
-      debugPrint('Erreur d\'authentification Google: $e');
-
-      // Fermer le dialogue en cas d'erreur
-      if (context.mounted && Navigator.canPop(context)) {
-        Navigator.of(context, rootNavigator: true).pop();
-      }
-
-      // Montrer l'erreur
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-                'Erreur: ${e.toString().substring(0, min(e.toString().length, 100))}'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
-
+      scaffold.hideCurrentSnackBar();
+      // Message d'erreur plus court et plus clair
+      scaffold.showSnackBar(
+        SnackBar(
+          content: Text('Erreur de connexion'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return false;
     }
   }

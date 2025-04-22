@@ -12,6 +12,8 @@ class ApiService {
       : 'https://aichatbot-86xs.onrender.com/api';
 
   ApiService() {
+    _dio.options.connectTimeout = const Duration(seconds: 8);
+    _dio.options.receiveTimeout = const Duration(seconds: 8);
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.options.headers['Accept'] = 'application/json';
     _dio.options.followRedirects = true;
@@ -20,8 +22,6 @@ class ApiService {
     _dio.options.validateStatus = (status) {
       return status != null && status < 500;
     };
-    _dio.options.connectTimeout = const Duration(seconds: 30);
-    _dio.options.receiveTimeout = const Duration(seconds: 30);
   }
 
   // Définir le token d'authentification

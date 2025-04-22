@@ -1,8 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_app/screens/homeScreen.dart';
 import 'package:provider/provider.dart';
 import 'package:flutter_app/providers/ThemeProvider.dart';
-import 'screens/homeScreen.dart';
+
+import 'screens/history_screen.dart';
+import 'screens/profile_screen.dart';
+import 'screens/settings_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,7 +35,13 @@ class MyApp extends StatelessWidget {
             title: 'Negotio',
             debugShowCheckedModeBanner: false,
             theme: themeProvider.themeData,
-            home: const HomeScreen(),
+            initialRoute: '/',
+            routes: {
+              '/': (context) => const HomeScreen(),
+              '/history': (context) => const HistoryScreen(),
+              '/profile': (context) => const ProfileScreen(),
+              '/settings': (context) => const SettingsScreen(),
+            },
           );
         },
       ),

@@ -1,43 +1,50 @@
 import 'package:dio/dio.dart';
-import 'package:dio_cookie_manager/dio_cookie_manager.dart';
-import 'package:cookie_jar/cookie_jar.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter/foundation.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 class ApiService {
   final Dio _dio = Dio();
-  final CookieJar _cookieJar = CookieJar();
+  String? _authToken;
 
-  // URL mise à jour pour pointer vers votre backend déployé
+  // URL de base de l'API
   final String _baseUrl = kReleaseMode
       ? 'https://aichatbot-86xs.onrender.com/api'
-      : 'https://aichatbot-86xs.onrender.com/api'; // Pour l'émulateur Android
+      : 'https://aichatbot-86xs.onrender.com/api';
 
   ApiService() {
-    _dio.interceptors.add(CookieManager(_cookieJar));
     _dio.options.headers['Content-Type'] = 'application/json';
     _dio.options.headers['Accept'] = 'application/json';
-    // Activer la gestion des cookies et le suivi des redirections
     _dio.options.followRedirects = true;
     _dio.options.maxRedirects = 5;
     _dio.options.receiveDataWhenStatusError = true;
     _dio.options.validateStatus = (status) {
       return status != null && status < 500;
     };
-    // Augmenter le timeout pour tenir compte des serveurs gratuits Render qui peuvent être lents
     _dio.options.connectTimeout = const Duration(seconds: 30);
     _dio.options.receiveTimeout = const Duration(seconds: 30);
+  }
+
+  // Définir le token d'authentification
+  void setAuthToken(String token) {
+    _authToken = token;
+    _dio.options.headers['Authorization'] = 'Bearer $token';
+  }
+
+  // Effacer le token d'authentification
+  void clearAuthToken() {
+    _authToken = null;
+    _dio.options.headers.remove('Authorization');
   }
 
   // Vérifier si l'utilisateur est authentifié
   Future<bool> isAuthenticated() async {
     try {
+      if (_authToken == null) {
+        return false;
+      }
+
       final response = await _dio.get(
         '$_baseUrl/auth/check',
-        options: Options(
-          extra: {'withCredentials': true},
-          followRedirects: true,
-        ),
       );
 
       if (response.statusCode == 200) {
@@ -56,18 +63,57 @@ class ApiService {
     }
   }
 
+  // Synchroniser l'utilisateur avec le backend
+  Future<bool> syncUserWithBackend() async {
+    try {
+      if (_authToken == null) {
+        return false;
+      }
+
+      final response = await _dio.get('$_baseUrl/auth/user');
+
+      if (response.statusCode == 200 && response.data['success'] == true) {
+        // Stocker les informations utilisateur localement
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setString(
+            'userName', response.data['user']['displayName'] ?? '');
+        await prefs.setString(
+            'userEmail', response.data['user']['email'] ?? '');
+        await prefs.setString(
+            'userImage', response.data['user']['image'] ?? '');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      debugPrint('Erreur de synchronisation avec le backend: $e');
+      return false;
+    }
+  }
+
   // Récupérer les informations de l'utilisateur
   Future<Map<String, dynamic>?> getCurrentUser() async {
     try {
-      final response = await _dio.get(
-        '$_baseUrl/auth/user',
-        options: Options(
-          extra: {'withCredentials': true},
-        ),
-      );
+      if (_authToken == null) {
+        // Si aucun token, essayer d'utiliser les données locales
+        final prefs = await SharedPreferences.getInstance();
+        final String? name = prefs.getString('userName');
+        final String? email = prefs.getString('userEmail');
+        final String? image = prefs.getString('userImage');
+
+        if (name != null && email != null) {
+          return {
+            'displayName': name,
+            'email': email,
+            'image': image ?? '',
+          };
+        }
+        return null;
+      }
+
+      final response = await _dio.get('$_baseUrl/auth/user');
 
       if (response.statusCode == 200 && response.data['success'] == true) {
-        // Stocker certaines informations utilisateur localement
+        // Stocker les informations utilisateur localement
         final prefs = await SharedPreferences.getInstance();
         await prefs.setString(
             'userName', response.data['user']['displayName'] ?? '');
@@ -78,7 +124,7 @@ class ApiService {
         return response.data['user'];
       }
 
-      // Si la requête a échoué mais que nous avons des données locales, les renvoyer
+      // Si la requête échoue mais que nous avons des données locales
       final prefs = await SharedPreferences.getInstance();
       final String? name = prefs.getString('userName');
       final String? email = prefs.getString('userEmail');
@@ -114,23 +160,13 @@ class ApiService {
     }
   }
 
-  // Initier le processus d'authentification Google
-  String getGoogleAuthUrl() {
-    return '$_baseUrl/auth/google?platform=mobile';
-  }
-
   // Déconnexion
   Future<bool> logout() async {
     try {
-      final response = await _dio.get(
-        '$_baseUrl/auth/logout?platform=mobile',
-        options: Options(
-          extra: {'withCredentials': true},
-        ),
-      );
+      final response = await _dio.get('$_baseUrl/auth/logout');
 
-      // Supprimer tous les cookies stockés
-      _cookieJar.deleteAll();
+      // Nettoyer le token
+      clearAuthToken();
 
       // Nettoyer les préférences locales
       final prefs = await SharedPreferences.getInstance();
@@ -143,34 +179,14 @@ class ApiService {
     } catch (e) {
       debugPrint('Erreur de déconnexion: $e');
 
-      // Même en cas d'erreur, on nettoie les données locales
+      // Même en cas d'erreur, nettoyer les données locales
+      clearAuthToken();
       final prefs = await SharedPreferences.getInstance();
       await prefs.remove('isLoggedIn');
       await prefs.remove('userName');
       await prefs.remove('userEmail');
       await prefs.remove('userImage');
 
-      return false;
-    }
-  }
-
-  // Valider l'authentification après redirection depuis OAuth
-  Future<bool> validateAuthSuccess(String url) async {
-    try {
-      // Vérifier si l'URL contient un identifiant utilisateur
-      Uri uri = Uri.parse(url);
-      String? userId = uri.queryParameters['userId'];
-
-      if (userId != null && userId.isNotEmpty) {
-        final prefs = await SharedPreferences.getInstance();
-        await prefs.setBool('isLoggedIn', true);
-
-        // Pour une sécurité supplémentaire, vérifier avec le serveur
-        return await isAuthenticated();
-      }
-      return false;
-    } catch (e) {
-      debugPrint('Erreur de validation d\'authentification: $e');
       return false;
     }
   }

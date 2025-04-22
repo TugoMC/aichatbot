@@ -1,17 +1,15 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_web_auth/flutter_web_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
 import '../services/apiService.dart';
 
 class AuthService {
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+  final GoogleSignIn _googleSignIn = GoogleSignIn();
   final ApiService _apiService = ApiService();
 
-  // Constantes pour les schemes et URLs d'authentification
-  static const String _callbackUrlScheme = 'myapp';
-
-  // Initialiser le processus d'authentification Google
-
+  // Se connecter avec Google
   Future<bool> signInWithGoogle(BuildContext context) async {
     try {
       // Afficher un dialogue de chargement
@@ -35,32 +33,57 @@ class AuthService {
         },
       );
 
-      // URL d'authentification
-      final String authUrl = _apiService.getGoogleAuthUrl();
-      debugPrint('Auth URL: $authUrl');
+      // Démarrer le processus de connexion Google
+      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
 
-      // Lancer l'authentification
-      final result = await FlutterWebAuth.authenticate(
-        url: authUrl,
-        callbackUrlScheme: _callbackUrlScheme,
-        preferEphemeral: true,
+      // Si l'utilisateur annule, retourner false
+      if (googleUser == null) {
+        if (context.mounted && Navigator.canPop(context)) {
+          Navigator.of(context, rootNavigator: true).pop();
+        }
+        return false;
+      }
+
+      // Obtenir les détails d'authentification du compte Google
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
+
+      // Créer des identifiants Firebase avec le token
+      final AuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
       );
 
-      debugPrint('Auth Result: $result');
+      // Connecter l'utilisateur avec Firebase
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
+
+      // Obtenir le token Firebase pour l'API
+      final String? idToken = await userCredential.user?.getIdToken();
+
+      // Utiliser ce token pour authentifier avec notre backend
+      if (idToken != null) {
+        _apiService.setAuthToken(idToken);
+
+        // Synchroniser avec le backend
+        await _apiService.syncUserWithBackend();
+      }
 
       // Fermer le dialogue
-      if (Navigator.canPop(context)) {
+      if (context.mounted && Navigator.canPop(context)) {
         Navigator.of(context, rootNavigator: true).pop();
       }
 
-      // Valider l'authentification
-      final bool success = await _apiService.validateAuthSuccess(result);
-      return success;
+      // Stocker l'état de connexion localement
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', true);
+
+      return true;
     } catch (e) {
       debugPrint('Erreur d\'authentification Google: $e');
 
       // Fermer le dialogue en cas d'erreur
-      if (Navigator.canPop(context)) {
+      if (context.mounted && Navigator.canPop(context)) {
         Navigator.of(context, rootNavigator: true).pop();
       }
 
@@ -79,38 +102,49 @@ class AuthService {
     }
   }
 
-  // Vérifier si l'utilisateur est déjà connecté
+  // Vérifier si l'utilisateur est connecté
   Future<bool> isLoggedIn() async {
-    // Vérifier d'abord avec l'API
-    final bool isAuthServer = await _apiService.isAuthenticated();
-
-    if (isAuthServer) {
+    final currentUser = _auth.currentUser;
+    if (currentUser != null) {
+      // Rafraîchir le token si nécessaire et mettre à jour l'API
+      final String? idToken = await currentUser.getIdToken(true);
+      if (idToken != null) {
+        _apiService.setAuthToken(idToken);
+      }
       return true;
     }
 
-    // Si le serveur dit non, vérifier localement
+    // En dernier recours, vérifier localement
     final prefs = await SharedPreferences.getInstance();
-    final bool isAuthLocal = prefs.getBool('isLoggedIn') ?? false;
-
-    // Si contradiction, suivre le serveur
-    if (isAuthLocal && !isAuthServer) {
-      await prefs.setBool('isLoggedIn', false);
-      return false;
-    }
-
-    return isAuthLocal;
+    return prefs.getBool('isLoggedIn') ?? false;
   }
 
   // Déconnexion
   Future<bool> signOut() async {
-    // Essayer d'abord de se déconnecter du serveur
-    final bool success = await _apiService.logout();
+    try {
+      await _auth.signOut();
+      await _googleSignIn.signOut();
 
-    // Même si la déconnexion du serveur échoue, nettoyer localement
-    final prefs = await SharedPreferences.getInstance();
-    await prefs.setBool('isLoggedIn', false);
+      // Supprimer le token de l'API
+      _apiService.clearAuthToken();
 
-    return success;
+      // Nettoyer les préférences locales
+      final prefs = await SharedPreferences.getInstance();
+      await prefs.setBool('isLoggedIn', false);
+      await prefs.remove('userName');
+      await prefs.remove('userEmail');
+      await prefs.remove('userImage');
+
+      return true;
+    } catch (e) {
+      debugPrint('Erreur lors de la déconnexion: $e');
+      return false;
+    }
+  }
+
+  // Récupérer l'utilisateur actuel de Firebase
+  User? getCurrentFirebaseUser() {
+    return _auth.currentUser;
   }
 
   // Utilitaire pour limiter la longueur d'une chaîne

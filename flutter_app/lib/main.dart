@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'screens/loginScreen.dart';
 import 'screens/homeScreen.dart';
 import 'services/authService.dart';
-import 'services/apiService.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp();
   runApp(const MyApp());
 }
 
@@ -14,7 +17,8 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Auth Demo',
+      title: 'Ai Chatbot',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
         primarySwatch: Colors.blue,
         visualDensity: VisualDensity.adaptivePlatformDensity,
@@ -33,7 +37,6 @@ class SplashScreen extends StatefulWidget {
 
 class _SplashScreenState extends State<SplashScreen> {
   final AuthService _authService = AuthService();
-  final ApiService _apiService = ApiService();
 
   @override
   void initState() {
@@ -42,8 +45,8 @@ class _SplashScreenState extends State<SplashScreen> {
   }
 
   Future<void> _checkAuth() async {
-    // Vérifiez d'abord avec le backend
-    final isAuthenticated = await _apiService.isAuthenticated();
+    // Vérifier l'état d'authentification
+    final isAuthenticated = await _authService.isLoggedIn();
 
     if (isAuthenticated) {
       if (mounted) {
